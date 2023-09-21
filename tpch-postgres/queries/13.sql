@@ -2,24 +2,26 @@
 -- TPC-H/TPC-R Customer Distribution Query (Q13)
 -- Functional Query Definition
 -- Approved February 1998
-
-SELECT
-          c_count,
-          COUNT(*) AS custdist
-  FROM (
-          SELECT
-                  c_custkey,
-                  COUNT(o_orderkey) AS c_count
-          FROM
-                  (SELECT * FROM customer
-                  LEFT OUTER JOIN orders ON
-                    c_custkey = o_custkey AND
-                    o_comment NOT LIKE '%special%requests%') c_customer
-          GROUP BY
-                  c_custkey
-          ) c_orders
-  GROUP BY
-          c_count
-  ORDER BY
-          custdist DESC,
-          c_count DESC;
+:x
+:o
+select
+	c_count,
+	count(*) as custdist
+from
+	(
+		select
+			c_custkey,
+			count(o_orderkey)
+		from
+			customer left outer join orders on
+				c_custkey = o_custkey
+				and o_comment not like '%:1%:2%'
+		group by
+			c_custkey
+	) as c_orders (c_custkey, c_count)
+group by
+	c_count
+order by
+	custdist desc,
+	c_count desc;
+:n -1

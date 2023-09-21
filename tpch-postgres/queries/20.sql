@@ -2,41 +2,43 @@
 -- TPC-H/TPC-R Potential Part Promotion Query (Q20)
 -- Function Query Definition
 -- Approved February 1998
-
-SELECT
- 	s_name,
-     s_address
-FROM
-     supplier,
-     nation
-WHERE
-     s_suppkey IN (
-		SELECT
+:x
+:o
+select
+	s_name,
+	s_address
+from
+	supplier,
+	nation
+where
+	s_suppkey in (
+		select
 			ps_suppkey
-		FROM
+		from
 			partsupp
-		WHERE
-			ps_partkey IN (
-				SELECT
+		where
+			ps_partkey in (
+				select
 					p_partkey
-				FROM
+				from
 					part
-				WHERE
-					p_name LIKE 'forest%'
+				where
+					p_name like ':1%'
 			)
-			AND ps_availqty > (
-				SELECT
-					0.5 * SUM(l_quantity)
-				FROM
+			and ps_availqty > (
+				select
+					0.5 * sum(l_quantity)
+				from
 					lineitem
-				WHERE
+				where
 					l_partkey = ps_partkey
-					AND l_suppkey = ps_suppkey
-					AND l_shipdate >= date '1994-01-01'
-					AND l_shipdate < (date '1994-01-01' + interval '1 year')
+					and l_suppkey = ps_suppkey
+					and l_shipdate >= date ':2'
+					and l_shipdate < date ':2' + interval '1' year
 			)
-     )
-     AND s_nationkey = n_nationkey
-     AND n_name = 'CANADA'
-ORDER BY
-     s_name;
+	)
+	and s_nationkey = n_nationkey
+	and n_name = ':3'
+order by
+	s_name;
+:n -1
