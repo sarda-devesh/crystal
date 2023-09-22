@@ -4,30 +4,28 @@ import os
 import json
 import datetime
 import time
+import re
 
-def convert_strings(table_col):
+def convert_strings(table_col, table_schema, col_name):
     mappings = {}
     updated_series = []
     for value in table_col.to_numpy():
-        key_val = len(mappings)
+        value = value.strip()
         if value not in mappings:
-            # This is a new value
-            mappings[value] = key_val
-        else:
-            # This value already exists
-            key_val = mappings[value]
-
-        updated_series.append(key_val)
+            new_id = len(mappings)
+            mappings[value] = new_id
+        updated_series.append(mappings[value])
 
     return pd.Series(updated_series, copy = False), mappings
 
+start_date = datetime.datetime(1970, 1, 1)
 def convert_dates(table_col):
     updated_series = []
     date_format = "%Y-%m-%d"
     for value in table_col.to_numpy():
         date_time = datetime.datetime.strptime(value, date_format)
-        unix_time = time.mktime(date_time.timetuple())
-        updated_series.append(int(unix_time))
+        days_diff = (date_time - start_date).days
+        updated_series.append(int(days_diff))
 
     return pd.Series(updated_series, copy = False)
 
@@ -35,8 +33,6 @@ def convert_table(table_file, table_schema, schema_save_dir, table_save_dir):
     # Check if it has already been converted
     table_name = os.path.basename(table_file)
     save_path = os.path.join(table_save_dir, table_name)
-    if os.path.exists(save_path):
-        return
     print("Processing table", table_name)
 
     # Read the table
@@ -50,7 +46,7 @@ def convert_table(table_file, table_schema, schema_save_dir, table_save_dir):
         column_type = table_schema[col_name]
         print("Processing col", col_name)
         if "str" in column_type:
-            updated_series, mappings = convert_strings(table_df[col_name])
+            updated_series, mappings = convert_strings(table_df[col_name], table_schema, col_name)
             table_df[col_name] = updated_series
             converted_schema[col_name] = mappings
         elif "date" in column_type:
@@ -77,7 +73,7 @@ def runner(data_dir):
         schema = json.load(reader)
 
     for table_name in os.listdir(tables_dir):
-        if ".tbl" not in table_name:
+        if ".tbl" not in table_name or "supplier" not in table_name:
             continue
         
         table_name_without_dir = table_name[ : table_name.rindex(".")]
