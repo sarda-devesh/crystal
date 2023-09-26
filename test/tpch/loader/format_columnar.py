@@ -29,9 +29,8 @@ def make_columnar(table_path, table_schema, column_dir):
     col_writers = {}
     col_names = table_schema["columns"]
     for col_name in col_names:
-        save_name = database_name + "_" + col_name + ".tbl"
+        save_name = database_name + "_" + col_name
         save_dir = os.path.join(column_dir, save_name)
-
         save_file = open(save_dir, "wb+")
         col_writers[col_name] = save_file
     
@@ -47,19 +46,21 @@ def make_columnar(table_path, table_schema, column_dir):
     for col_name in col_writers:
         col_writers[col_name].close()
 
-processed_files = ["customer.tbl", "part.tbl", "lineitem.tbl", "region.tbl", "nation.tbl"]
-def runner(data_dir):
-    # Set the file paths
-    converted_dir = os.path.join(data_dir, "s1_converted")
-    column_dir = os.path.join(data_dir, "s1_columnar")
-    os.makedirs(column_dir, exist_ok = True)
-    schema_dir = os.path.join(data_dir, "schema_metadata")
+processed_files = ["customer.tbl", "part.tbl", "lineitem.tbl", "region.tbl", "nation.tbl", "supplier.tbl", "partsupp.tbl"]
+def runner(converted_dir):
+    parent_dir = os.path.dirname(converted_dir)
+    dir_name = os.path.basename(converted_dir)
+    columnar_dir_name = dir_name.replace("converted", "columnar")
+    columnar_dir_path = os.path.join(parent_dir, columnar_dir_name)
+    os.makedirs(columnar_dir_path, exist_ok = True)
 
     # Read the overall schema
+    schema_dir = os.path.join(parent_dir, "schema_metadata")
     all_schema_file = os.path.join(schema_dir, "schema.json")
     with open(all_schema_file, 'r') as reader:
         schema = json.load(reader)
 
+    # Make each table columnar
     for table_name in os.listdir(converted_dir):
         if ".tbl" not in table_name or table_name in processed_files:
             continue
@@ -67,11 +68,11 @@ def runner(data_dir):
         table_name_without_ext = table_name[ : table_name.rindex(".")]
         table_schema = schema[table_name_without_ext]
         table_path = os.path.join(converted_dir, table_name)
-        make_columnar(table_path, table_schema, column_dir)
+        make_columnar(table_path, table_schema, columnar_dir_path)
 
 def verify(data_directory):
-    converted_dir = os.path.join(data_directory, "s1_converted")
-    column_dir = os.path.join(data_directory, "s1_columnar")
+    converted_dir = os.path.join(data_directory, "s1_converted_all")
+    column_dir = os.path.join(data_directory, "s1_columnar_only_valid")
     schema_dir = os.path.join(data_directory, "schema_metadata")
 
     all_schema_file = os.path.join(schema_dir, "schema.json")
@@ -101,7 +102,7 @@ def verify(data_directory):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'convert')
-    parser.add_argument('data_directory', type=str, help='Data Directory')
+    parser.add_argument('converted_directory', type=str, help='Converted Directory')
     args = parser.parse_args()
 
-    verify(args.data_directory)
+    runner(args.converted_directory)
