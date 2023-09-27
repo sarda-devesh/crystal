@@ -20,7 +20,7 @@ using std::chrono::high_resolution_clock;
 using std::chrono::duration;
 
 #define NUM_BLOCKS 640
-#define NUM_TRIALS 10
+#define NUM_TRIALS 25
 
 /**
  * Globals, constants and typedefs
@@ -30,7 +30,14 @@ cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device
 
 __global__ void QueryKernel(int* d_l_shipdate, float* d_l_discount, float* d_l_quantity, 
 float* d_l_extendedprice, float* total, int lo_num_entries) {
+    __shared__ float sdata[32];
+    int tid = threadIdx.x;
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    float val = 0.0f;
+    unsigned mask = 0xFFFFFFFFU;
+    int lane = threadIdx.x % warpSize;
+    int warpID = threadIdx.x / warpSize;
+
     while(idx < lo_num_entries) {
       // Check the conditions for the query
       int curr_ship_date = d_l_shipdate[idx]; 
@@ -38,12 +45,26 @@ float* d_l_extendedprice, float* total, int lo_num_entries) {
         float curr_discount = d_l_discount[idx];
         if(curr_discount >= 0.05 && curr_discount <= 0.070001) {
           if(d_l_quantity[idx] < 24.0) {
-            atomicAdd(total, d_l_extendedprice[idx] * curr_discount);
+            // All the conditions have been met so set val
+            val = d_l_extendedprice[idx] * curr_discount;
           }
         }
       }
       
       idx += gridDim.x * blockDim.x;
+    }
+
+    // 1st warp shuffle reduction
+    for(int offset = warpSize/2; offset > 0; offset >>= 1)
+      val += __shfl_down_sync(mask, val, offset);
+    if(lane == 0) sdata[warpID] = val;
+    __syncthreads();
+
+    if(warpID == 0) {
+      val = (tid < blockDim.x/warpSize) ? sdata[lane] : 0;
+      for(int offset = warpSize/2; offset > 0; offset >>= 1)
+        val += __shfl_down_sync(mask, val, offset);
+      if (tid == 0) atomicAdd(total, val);
     }
 }
 
