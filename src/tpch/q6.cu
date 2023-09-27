@@ -21,12 +21,24 @@ using std::chrono::duration;
 /**
  * Globals, constants and typedefs
  */
-bool                    g_verbose = false;  // Whether to display input/output to console
+bool  g_verbose = false;  // Whether to display input/output to console
 cub::CachingDeviceAllocator  g_allocator(true);  // Caching allocator for device memory
 
-float runQuery(int* d_l_shipdate, int* d_l_discount, int* d_l_quantity, int lo_num_entries, 
-    cub::CachingDeviceAllocator&  g_allocator) {
+__global__ void BasicQuery(int* d_l_shipdate, float* d_l_discount, float* d_l_quantity, float* d_l_extendedprice, 
+int lo_num_entries, float* revenue) {
+    size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+    if(idx < lo_num_entries) {
+      int ship_date = d_l_shipdate[idx];
+      float discount = d_l_discount[idx];
+      float quantity = d_l_quantity[idx];
+      if(ship_date >= 8766 && ship_date < 9131 && discount >= 0.05 && discount <= 0.07 && quantity < 24) {
+        atomicAdd(revenue, discount * d_l_extendedprice[idx]);
+      }
+    }
+}
 
+float runQuery(int* d_l_shipdate, float* d_l_discount, float* d_l_quantity, float* d_l_extendedprice, 
+int lo_num_entries, cub::CachingDeviceAllocator&  g_allocator) {
     // Setup all the timing stuff
     cudaEvent_t gpu_start, gpu_stop; 
     cudaEventCreate(&gpu_start); 
@@ -38,9 +50,14 @@ float runQuery(int* d_l_shipdate, int* d_l_discount, int* d_l_quantity, int lo_n
     cudaEventRecord(gpu_start, 0);
 
     // Allocate space for the result on the GPU
-    unsigned long long* d_sum = NULL;
-    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_sum, sizeof(long long)));
-    cudaMemset(d_sum, 0, sizeof(long long));
+    float* d_sum = NULL;
+    CubDebugExit(g_allocator.DeviceAllocate((void**) &d_sum, sizeof(float)));
+    cudaMemset(d_sum, 0, sizeof(float));
+
+    // Call the kernel
+    int blocks_per_thread = (lo_num_entries + THREADS_PER_BLOCK - 1)/THREADS_PER_BLOCK;
+    BasicQuery<<<blocks_per_thread,THREADS_PER_BLOCK>>>(d_l_shipdate, d_l_discount, d_l_quantity, 
+      d_l_extendedprice, lo_num_entries, d_sum);
 
     // Record that the kernel has finished
     float time_query;
@@ -49,8 +66,8 @@ float runQuery(int* d_l_shipdate, int* d_l_discount, int* d_l_quantity, int lo_n
     cudaEventElapsedTime(&time_query, gpu_start, gpu_stop);
 
     // Get the total amount of reveue
-    unsigned long long revenue;
-    CubDebugExit(cudaMemcpy(&revenue, d_sum, sizeof(long long), cudaMemcpyDeviceToHost));
+    float revenue;
+    CubDebugExit(cudaMemcpy(&revenue, d_sum, sizeof(float), cudaMemcpyDeviceToHost));
 
     // Record that we finished the query
     end = high_resolution_clock::now();
@@ -75,8 +92,9 @@ int main(int argc, char** argv)
   
   // Read the columns
   int *h_l_shipdate = loadColumn<int>(data_dir, "lineitem", "l_shipdate", LO_LEN);
-  int *h_l_discount = loadColumn<int>(data_dir, "lineitem", "l_discount", LO_LEN);
-  int *h_l_quantity = loadColumn<int>(data_dir, "lineitem", "l_quantity", LO_LEN);
+  float *h_l_discount = loadColumn<float>(data_dir, "lineitem", "l_discount", LO_LEN);
+  float *h_l_quantity = loadColumn<float>(data_dir, "lineitem", "l_quantity", LO_LEN);
+  float *h_l_extendedprice = loadColumn<float>(data_dir, "lineitem", "l_extendedprice", LO_LEN);
   std::cout << "** Loaded all the data **" << std::endl;
 
   // Begin the debugger
@@ -84,12 +102,13 @@ int main(int argc, char** argv)
 
   // Move the data to the GPU
   int *d_l_shipdate = loadToGPU<int>(h_l_shipdate, LO_LEN, g_allocator);
-  int *d_l_discount = loadToGPU<int>(h_l_discount, LO_LEN, g_allocator);
-  int *d_l_quantity = loadToGPU<int>(h_l_quantity, LO_LEN, g_allocator);
+  float *d_l_discount = loadToGPU<float>(h_l_discount, LO_LEN, g_allocator);
+  float *d_l_quantity = loadToGPU<float>(h_l_quantity, LO_LEN, g_allocator);
+  float *d_l_extendedprice = loadToGPU<float>(h_l_extendedprice, LO_LEN, g_allocator);
   std::cout << "** Loaded all the data to the GPU **" << std::endl;
 
   // Run the query
-  runQuery(d_l_shipdate, d_l_discount, d_l_quantity, LO_LEN, g_allocator);
+  runQuery(d_l_shipdate, d_l_discount, d_l_quantity, d_l_extendedprice, LO_LEN, g_allocator);
 
   return 0;
 }

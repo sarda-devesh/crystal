@@ -8,12 +8,11 @@
 using namespace std;
 
 #define SF 1
-
 #define BASE_PATH "/gscratch/ubicomp/devess/crystal/test/tpch/data/"
 
 #if SF == 1
 #define DATA_DIR "s1_columnar_all/"
-#define LO_LEN 24004856
+#define LO_LEN 6001214
 #define P_LEN 200000
 #define S_LEN 2000
 #define C_LEN 30000
@@ -78,7 +77,7 @@ T* loadColumn(string data_dir, string table_name, string col_name, int num_entri
     return NULL;
   }
 
-  colData.read((char*)h_col, num_entries * sizeof(T));
+  colData.read(reinterpret_cast<char*>(h_col), num_entries * sizeof(T));
   return h_col;
 }
 

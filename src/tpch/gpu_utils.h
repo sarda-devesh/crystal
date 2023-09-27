@@ -1,5 +1,6 @@
 #pragma once
 
+#define THREADS_PER_BLOCK 256
 #define SETUP_TIMING() cudaEvent_t start, stop; cudaEventCreate(&start); cudaEventCreate(&stop);
 
 #define TIME_FUNC(f,t) { \
