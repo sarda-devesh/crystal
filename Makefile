@@ -14,7 +14,7 @@ GENCODE_SM50    := -gencode arch=compute_52,code=sm_52
 #GENCODE_SM70    := -gencode arch=compute_70,code=sm_70
 GENCODE_FLAGS   := $(GENCODE_SM50)
 
-NVCCFLAGS += --std=c++11 $(SM_DEF) -Xptxas="-dlcm=cg -v" -lineinfo -Xcudafe -\# 
+NVCCFLAGS += --std=c++17 $(SM_DEF) -Xptxas="-dlcm=cg -v" -lineinfo -Xcudafe -\# 
 
 SRC = src
 BIN = bin
@@ -38,6 +38,7 @@ setup:
     rm 1.6.4.zip; \
 	fi
 	mkdir -p bin/ssb obj/ssb
+	mkdir -p bin/tpch obj/tpch
 	mkdir -p bin/ops obj/ops
 
 clean:

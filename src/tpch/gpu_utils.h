@@ -1,6 +1,6 @@
 #pragma once
 
-#define SETUP_TIMING() 
+#define SETUP_TIMING() cudaEvent_t start, stop; cudaEventCreate(&start); cudaEventCreate(&stop);
 
 #define TIME_FUNC(f,t) { \
     cudaEventRecord(start, 0); \
