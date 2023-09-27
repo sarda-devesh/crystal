@@ -17,10 +17,10 @@
 
 template<typename T>
 T* loadToGPU(T* src, int numEntries, cub::CachingDeviceAllocator& g_allocator) {
-  T* dest;
-  CubDebugExit(g_allocator.DeviceAllocate((void**)&dest, sizeof(T) * numEntries));
-  CubDebugExit(cudaMemcpy(dest, src, sizeof(T) * numEntries, cudaMemcpyHostToDevice));
-  return dest;
+    T* dest = nullptr;
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&dest, sizeof(T) * numEntries));
+    CubDebugExit(cudaMemcpy(dest, src, sizeof(T) * numEntries, cudaMemcpyHostToDevice));
+    return dest;
 }
 
 #define TILE_SIZE (BLOCK_THREADS * ITEMS_PER_THREAD)

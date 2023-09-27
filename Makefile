@@ -10,9 +10,9 @@ SM_DEF     = -DSM750
 #SM_TARGETS   = -gencode=arch=compute_70,code=\"sm_70,compute_70\" 
 #SM_DEF     = -DSM700
 
-# GENCODE_SM50    := -gencode arch=compute_52,code=sm_52
-GENCODE_SM75    := -gencode arch=compute_75,code=sm_75
-GENCODE_FLAGS   := $(GENCODE_SM75)
+GENCODE_SM50    := -gencode arch=compute_75,code=sm_75
+# GENCODE_SM75    := -gencode arch=compute_75,code=sm_75
+GENCODE_FLAGS   := $(GENCODE_SM50)
 
 NVCCFLAGS += --std=c++17 $(SM_DEF) -Xptxas="-dlcm=cg -v" -lineinfo -Xcudafe -\# 
 
